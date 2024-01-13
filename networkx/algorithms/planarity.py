@@ -856,7 +856,11 @@ class PlanarEmbedding(nx.DiGraph):
     """
 
     def __init__(self, incoming_graph_data=None, **attr):
-        super().__init__(incoming_graph_data=incoming_graph_data, **attr)
+        if isinstance(incoming_graph_data, self.__class__):
+            super().__init__(**attr)
+            self.__copy_from(incoming_graph_data)
+        else:
+            super().__init__(incoming_graph_data=incoming_graph_data, **attr)
         self.add_edge = self.__forbidden
         self.add_edges_from = self.__forbidden
         self.add_weighted_edges_from = self.__forbidden
@@ -869,6 +873,63 @@ class PlanarEmbedding(nx.DiGraph):
         """
         raise NotImplementedError(
             "Use `add_half_edge` method to add edges to a PlanarEmbedding."
+        )
+
+    def copy(self, as_view=False):
+        """Returns a copy of the planar embedding.
+
+        The copy method by default returns an independent shallow copy
+        of the graph and attributes. That is, if an attribute is a
+        container, that container is shared by the original an the copy.
+        Use Python's `copy.deepcopy` for new containers.
+
+        If `as_view` is True then a view is returned instead of a copy.
+
+        Parameters
+        ----------
+        as_view : bool, optional (default=False)
+            If True, the returned graph-view provides a read-only view
+            of the original graph without actually copying any data.
+
+        Returns
+        -------
+        G : PlanarEmbedding
+            A copy of the planar embedding.
+
+        Examples
+        --------
+        >>> G = nx.PlanarEmbedding()
+        >>> H = G.copy()
+
+        """
+        if as_view is True:
+            return nx.graphviews.generic_graph_view(self)
+        return self.__class__(self)
+
+    def __copy_from(self, G):
+        """Import the structure and attributes from graph G.
+
+        Nodes, edges and attributes of G are added to self. If an
+        attribute's value is a container, that container is shared
+        with the source G.
+
+        Parameters
+        ----------
+        G : Graph
+            A graph to import from.
+
+        Examples
+        --------
+        >>> G = nx.PlanarEmbedding()
+        >>> G.__copy_from(H)
+
+        """
+        self.graph.update(G.graph)
+        self.add_nodes_from((n, d.copy()) for n, d in G._node.items())
+        self.add_edges_from(
+            (u, v, datadict.copy())
+            for u, nbrs in G._adj.items()
+            for v, datadict in nbrs.items()
         )
 
     def get_data(self):
